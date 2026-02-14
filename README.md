@@ -1,19 +1,18 @@
-# FaceTracking
+# Face & Hand Tracking (OpenCV Haar Cascades)
 
-A real-time face and hand tracking application using [MediaPipe](https://github.com/google/mediapipe) and [OpenCV](https://opencv.org/).
+A real-time face and hand detection application using **OpenCV** and **Haar Cascades**.
 
 ## Description
 
-This project utilizes MediaPipe's Holistic solution to detect and track face landmarks and hand poses (left and right) from a webcam feed. It visualizes the tracking results directly on the video stream in real-time.
+This project uses pre-trained Haar Cascade classifiers to detect faces and hands from a webcam feed.
+
+- **Face Detection**: Uses the standard `haarcascade_frontalface_default.xml`.
+- **Hand Detection**: Uses a custom `haarcascade_hand.xml`.
 
 ## Features
 
-- **Holistic Tracking**: Simultaneously tracks face mesh and hand landmarks.
-- **Real-time Performance**: Optimized for fluid performance using MediaPipe's lightweight models.
-- **Visual Feedback**: Draws landmarks and connections for:
-  - Face Mesh (Contours)
-  - Left Hand
-  - Right Hand
+- **Real-time Detection**: fast detection using lightweight Haar cascades.
+- **Visual Feedback**: Draws bounding boxes around detected faces (Blue) and hands (Green).
 
 ## Prerequisites
 
@@ -23,13 +22,22 @@ This project utilizes MediaPipe's Holistic solution to detect and track face lan
 ## Installation
 
 1. Clone the repository or download the source code.
-2. Install the required dependencies using pip:
+2. Create and activate a virtual environment (Optional but recommended):
+
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install the required dependencies:
 
    ```bash
    pip install -r requirements.txt
    ```
 
-   _Note: It is recommended to use a virtual environment._
+4. **Important**: Ensure the XML files are in the same directory:
+   - `haarcascade_frontalface_default.xml`
+   - `haarcascade_hand.xml`
 
 ## Usage
 
@@ -39,7 +47,7 @@ This project utilizes MediaPipe's Holistic solution to detect and track face lan
    python tracker.py
    ```
 
-2. The application will open a window showing the webcam feed with tracking overlays.
+2. The application will open a window showing the webcam feed.
 
 3. **Controls**:
    - Press **`q`** to exit the application.
@@ -47,4 +55,3 @@ This project utilizes MediaPipe's Holistic solution to detect and track face lan
 ## Dependencies
 
 - `opencv-python`
-- `mediapipe`

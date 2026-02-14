@@ -1,53 +1,44 @@
 import cv2
-import mediapipe as mp
 
-# 1. Initialize MediaPipe Holistic and Drawing utilities
-mp_holistic = mp.solutions.holistic
-mp_drawing = mp.solutions.drawing_utils
-holistic = mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+# 1. Load the pre-trained classifiers
+face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+if face_cascade.empty():
+    print("Error: Could not load 'haarcascade_frontalface_default.xml'. Check if the file exists.")
 
-# 2. Access the Webcam
-# '0' is usually the default laptop cam. Use '1' or '2' for external USB cams.
+# Note: Pure OpenCV hand detection is less 'plug-and-play' than MediaPipe.
+hand_cascade = cv2.CascadeClassifier('haarcascade_hand.xml') 
+if hand_cascade.empty():
+    print("Warning: Could not load 'haarcascade_hand.xml'. Hand detection will be skipped.")
+
 cap = cv2.VideoCapture(0)
 
-print("Press 'q' to exit the application.")
-
-while cap.isOpened():
+while True:
     ret, frame = cap.read()
     if not ret:
         break
 
-    # 3. Prepare image for MediaPipe
-    # OpenCV uses BGR, but MediaPipe requires RGB
-    image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    image.flags.writeable = False # Performance optimization
-    
-    # 4. Perform Tracking
-    results = holistic.process(image)
+    # Convert to grayscale (required for Haar Cascades)
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    # 5. Draw Results back on the frame
-    image.flags.writeable = True
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR) # Convert back to BGR for display
+    # 2. Detect Faces
+    if not face_cascade.empty():
+        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+        for (x, y, w, h) in faces:
+            cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+            cv2.putText(frame, "Face", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
-    # Draw Face Landmarks
-    if results.face_landmarks:
-        mp_drawing.draw_landmarks(image, results.face_landmarks, mp_holistic.FACEMESH_CONTOURS,
-                                 mp_drawing.DrawingSpec(color=(80,110,10), thickness=1, circle_radius=1),
-                                 mp_drawing.DrawingSpec(color=(80,256,121), thickness=1, circle_radius=1))
+    # 3. Detect Hands
+    if not hand_cascade.empty():
+        # This cascade is famously 'noisy' compared to AI models
+        hands = hand_cascade.detectMultiScale(gray, 1.1, 4)
+        for (x, y, w, h) in hands:
+            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            cv2.putText(frame, "Hand", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-    # Draw Right Hand
-    if results.right_hand_landmarks:
-        mp_drawing.draw_landmarks(image, results.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
+    # Display the result
+    cv2.imshow('OpenCV Face & Hand Detection', frame)
 
-    # Draw Left Hand
-    if results.left_hand_landmarks:
-        mp_drawing.draw_landmarks(image, results.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
-
-    # 6. Display the Output
-    cv2.imshow('Hand and Face Tracking', image)
-
-    # Break loop on 'q' key press
-    if cv2.waitKey(10) & 0xFF == ord('q'):
+    if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
 cap.release()
