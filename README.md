@@ -1,22 +1,22 @@
-# Face & Hand Tracking (MediaPipe)
+# Face & Hand Tracking (MediaPipe Tasks)
 
-A real-time "smart" face and hand tracking application using **MediaPipe** and **OpenCV**.
+A real-time "smart" face and hand tracking application using the modern **MediaPipe Tasks API**.
 
 ## Description
 
-This project utilizes [MediaPipe Holistic](https://google.github.io/mediapipe/solutions/holistic.html) to detect and track:
+This project uses the latest locally-run AI models to detect:
 
-- **Face Mesh**: 468 landmarks on the face.
-- **Hands**: 21 landmarks per hand (fingers and joints).
+- **Face Landmarks**: 468 points on the face.
+- **Hand Landmarks**: 21 skeletal points per hand.
 
-Unlike simple bounding boxes, this model understands the **geometry and pose** of your face and hands.
+It uses the `mediapipe.tasks.vision` API which is compatible with newer Python versions (3.13+).
 
 ## Features
 
-- **Holistic Tracking**: Simultaneously tracks face, pose, and hands.
-- **Real-time Performance**: Optimized with FPS counter.
-- **Mirror Mode**: Video feed is mirrored for natural interaction.
-- **Skeletal Visualization**: Draws connections between joints.
+- **Robust Tracking**: Uses `face_landmarker.task` and `hand_landmarker.task` models.
+- **Real-time Performance**: Optimized loop with FPS counter.
+- **Mirror Mode**: Video feed is flipped for natural interaction.
+- **Custom Visualization**: Draws detailed skeletons and mesh points.
 
 ## Prerequisites
 
@@ -26,7 +26,7 @@ Unlike simple bounding boxes, this model understands the **geometry and pose** o
 ## Installation
 
 1. Clone the repository or download the source code.
-2. Create and activate a virtual environment (Recommended):
+2. Create and activate a virtual environment:
 
    ```bash
    python3 -m venv venv
@@ -38,6 +38,8 @@ Unlike simple bounding boxes, this model understands the **geometry and pose** o
    ```bash
    pip install -r requirements.txt
    ```
+
+4. **Models**: The script requires `face_landmarker.task` and `hand_landmarker.task` in the project directory.
 
 ## Usage
 

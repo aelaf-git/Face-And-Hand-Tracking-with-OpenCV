@@ -1,17 +1,36 @@
 import cv2
 import mediapipe as mp
 import time
+import numpy as np
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 
 class FaceHandTracker:
     def __init__(self):
-        # Initialize MediaPipe Holistic
-        self.mp_holistic = mp.solutions.holistic
-        self.mp_drawing = mp.solutions.drawing_utils
-        self.holistic = self.mp_holistic.Holistic(
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
-        )
-        
+        # Initialize Face Landmarker
+        base_options_face = python.BaseOptions(model_asset_path='face_landmarker.task')
+        options_face = vision.FaceLandmarkerOptions(
+            base_options=base_options_face,
+            num_faces=1,
+            min_face_detection_confidence=0.5,
+            min_face_presence_confidence=0.5,
+            min_tracking_confidence=0.5,
+            output_face_blendshapes=False,
+            output_facial_transformation_matrixes=False,
+            running_mode=vision.RunningMode.VIDEO)
+        self.face_landmarker = vision.FaceLandmarker.create_from_options(options_face)
+
+        # Initialize Hand Landmarker
+        base_options_hand = python.BaseOptions(model_asset_path='hand_landmarker.task')
+        options_hand = vision.HandLandmarkerOptions(
+            base_options=base_options_hand,
+            num_hands=2,
+            min_hand_detection_confidence=0.5,
+            min_hand_presence_confidence=0.5,
+            min_tracking_confidence=0.5,
+            running_mode=vision.RunningMode.VIDEO)
+        self.hand_landmarker = vision.HandLandmarker.create_from_options(options_hand)
+
         # Initialize video capture
         self.cap = cv2.VideoCapture(0)
         
@@ -19,72 +38,90 @@ class FaceHandTracker:
         self.prev_time = 0
         self.curr_time = 0
 
-    def detect_and_draw(self, frame):
-        """Perform detection and draw landmarks."""
-        
-        # MediaPipe requires RGB, OpenCV uses BGR
-        image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        image.flags.writeable = False # Improve performance
-        
-        # Process image
-        results = self.holistic.process(image)
-        
-        # Convert back to BGR for drawing
-        image.flags.writeable = True
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-
-        # Draw Face Landmarks
-        if results.face_landmarks:
-            self.mp_drawing.draw_landmarks(
-                image, 
-                results.face_landmarks, 
-                self.mp_holistic.FACEMESH_CONTOURS,
-                self.mp_drawing.DrawingSpec(color=(80,110,10), thickness=1, circle_radius=1),
-                self.mp_drawing.DrawingSpec(color=(80,256,121), thickness=1, circle_radius=1)
-            )
-
-        # Draw Right Hand
-        if results.right_hand_landmarks:
-            self.mp_drawing.draw_landmarks(
-                image, 
-                results.right_hand_landmarks, 
-                self.mp_holistic.HAND_CONNECTIONS
-            )
-
-        # Draw Left Hand
-        if results.left_hand_landmarks:
-            self.mp_drawing.draw_landmarks(
-                image, 
-                results.left_hand_landmarks, 
-                self.mp_holistic.HAND_CONNECTIONS
-            )
-        
-        return image
-
     def run(self):
-        """Main loop for video capture and processing."""
         print("Press 'q' to exit.")
+        
         while self.cap.isOpened():
             ret, frame = self.cap.read()
             if not ret:
                 break
 
-            # Mirror the frame naturally
+            # Mirror the frame
             frame = cv2.flip(frame, 1)
+            
+            # Convert to RGB for MediaPipe
+            rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_image)
+            
+            # Timestamp for video mode
+            timestamp_ms = int(time.time() * 1000)
+            
+            # Detect
+            face_result = self.face_landmarker.detect_for_video(mp_image, timestamp_ms)
+            hand_result = self.hand_landmarker.detect_for_video(mp_image, timestamp_ms)
+            
+            # Visualization
+            # Draw Face Points
+            if face_result.face_landmarks:
+                for face_landmarks in face_result.face_landmarks:
+                    for landmark in face_landmarks:
+                        x = int(landmark.x * frame.shape[1])
+                        y = int(landmark.y * frame.shape[0])
+                        cv2.circle(frame, (x, y), 1, (0, 255, 255), -1)
 
-            # Process frame
-            frame = self.detect_and_draw(frame)
+            # Draw Hand Points and Lines
+            if hand_result.hand_landmarks:
+                for hand_landmarks in hand_result.hand_landmarks:
+                    # Draw points
+                    h, w, _ = frame.shape
+                    landmarks_px = [(int(l.x * w), int(l.y * h)) for l in hand_landmarks]
+                    
+                    for pt in landmarks_px:
+                        cv2.circle(frame, pt, 3, (0, 255, 0), -1)
+                        
+                    # Draw simple connections (manual implementation of hand skeleton)
+                    # Thumb
+                    cv2.line(frame, landmarks_px[0], landmarks_px[1], (0, 255, 0), 2)
+                    cv2.line(frame, landmarks_px[1], landmarks_px[2], (0, 255, 0), 2)
+                    cv2.line(frame, landmarks_px[2], landmarks_px[3], (0, 255, 0), 2)
+                    cv2.line(frame, landmarks_px[3], landmarks_px[4], (0, 255, 0), 2)
+                    # Index
+                    cv2.line(frame, landmarks_px[0], landmarks_px[5], (0, 255, 0), 2)
+                    cv2.line(frame, landmarks_px[5], landmarks_px[6], (0, 255, 0), 2)
+                    cv2.line(frame, landmarks_px[6], landmarks_px[7], (0, 255, 0), 2)
+                    cv2.line(frame, landmarks_px[7], landmarks_px[8], (0, 255, 0), 2)
+                    # Middle
+                    cv2.line(frame, landmarks_px[9], landmarks_px[10], (0, 255, 0), 2)
+                    cv2.line(frame, landmarks_px[10], landmarks_px[11], (0, 255, 0), 2)
+                    cv2.line(frame, landmarks_px[11], landmarks_px[12], (0, 255, 0), 2)
+                    # Ring
+                    cv2.line(frame, landmarks_px[13], landmarks_px[14], (0, 255, 0), 2)
+                    cv2.line(frame, landmarks_px[14], landmarks_px[15], (0, 255, 0), 2)
+                    cv2.line(frame, landmarks_px[15], landmarks_px[16], (0, 255, 0), 2)
+                    # Pinky
+                    cv2.line(frame, landmarks_px[0], landmarks_px[17], (0, 255, 0), 2)
+                    cv2.line(frame, landmarks_px[17], landmarks_px[18], (0, 255, 0), 2)
+                    cv2.line(frame, landmarks_px[18], landmarks_px[19], (0, 255, 0), 2)
+                    cv2.line(frame, landmarks_px[19], landmarks_px[20], (0, 255, 0), 2)
+                    # Palm
+                    cv2.line(frame, landmarks_px[5], landmarks_px[9], (0, 255, 0), 2)
+                    cv2.line(frame, landmarks_px[9], landmarks_px[13], (0, 255, 0), 2)
+                    cv2.line(frame, landmarks_px[13], landmarks_px[17], (0, 255, 0), 2)
+
 
             # Calculate and display FPS
             self.curr_time = time.time()
-            fps = 1 / (self.curr_time - self.prev_time)
+            if self.curr_time - self.prev_time > 0:
+                fps = 1 / (self.curr_time - self.prev_time)
+            else:
+                fps = 0
             self.prev_time = self.curr_time
             cv2.putText(frame, f'FPS: {int(fps)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
             # Display result
-            cv2.imshow('MediaPipe Face & Hand Tracking', frame)
+            cv2.imshow('MediaPipe Face & Hand Tasks', frame)
 
-            if cv2.waitKey(10) & 0xFF == ord('q'):
+            if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
         self.cap.release()
