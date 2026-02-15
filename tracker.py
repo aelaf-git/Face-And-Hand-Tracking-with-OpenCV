@@ -1,16 +1,16 @@
 import cv2
+import mediapipe as mp
 import time
 
 class FaceHandTracker:
-    def __init__(self, face_cascade_path='haarcascade_frontalface_default.xml', hand_cascade_path='haarcascade_hand.xml'):
-        # Load classifiers with error handling
-        self.face_cascade = cv2.CascadeClassifier(face_cascade_path)
-        if self.face_cascade.empty():
-            print(f"Error: Could not load '{face_cascade_path}'. Check if the file exists.")
-        
-        self.hand_cascade = cv2.CascadeClassifier(hand_cascade_path)
-        if self.hand_cascade.empty():
-            print(f"Warning: Could not load '{hand_cascade_path}'. Hand detection will be skipped.")
+    def __init__(self):
+        # Initialize MediaPipe Holistic
+        self.mp_holistic = mp.solutions.holistic
+        self.mp_drawing = mp.solutions.drawing_utils
+        self.holistic = self.mp_holistic.Holistic(
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5
+        )
         
         # Initialize video capture
         self.cap = cv2.VideoCapture(0)
@@ -19,29 +19,52 @@ class FaceHandTracker:
         self.prev_time = 0
         self.curr_time = 0
 
-    def detect_and_draw(self, frame, gray):
-        """Perform detection and draw bounding boxes."""
+    def detect_and_draw(self, frame):
+        """Perform detection and draw landmarks."""
         
-        # 1. Detect Faces
-        if not self.face_cascade.empty():
-            faces = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4)
-            for (x, y, w, h) in faces:
-                cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
-                cv2.putText(frame, "Face", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        # MediaPipe requires RGB, OpenCV uses BGR
+        image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        image.flags.writeable = False # Improve performance
+        
+        # Process image
+        results = self.holistic.process(image)
+        
+        # Convert back to BGR for drawing
+        image.flags.writeable = True
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
-        # 2. Detect Hands
-        if not self.hand_cascade.empty():
-            hands = self.hand_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4)
-            for (x, y, w, h) in hands:
-                cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                cv2.putText(frame, "Hand", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        # Draw Face Landmarks
+        if results.face_landmarks:
+            self.mp_drawing.draw_landmarks(
+                image, 
+                results.face_landmarks, 
+                self.mp_holistic.FACEMESH_CONTOURS,
+                self.mp_drawing.DrawingSpec(color=(80,110,10), thickness=1, circle_radius=1),
+                self.mp_drawing.DrawingSpec(color=(80,256,121), thickness=1, circle_radius=1)
+            )
+
+        # Draw Right Hand
+        if results.right_hand_landmarks:
+            self.mp_drawing.draw_landmarks(
+                image, 
+                results.right_hand_landmarks, 
+                self.mp_holistic.HAND_CONNECTIONS
+            )
+
+        # Draw Left Hand
+        if results.left_hand_landmarks:
+            self.mp_drawing.draw_landmarks(
+                image, 
+                results.left_hand_landmarks, 
+                self.mp_holistic.HAND_CONNECTIONS
+            )
         
-        return frame
+        return image
 
     def run(self):
         """Main loop for video capture and processing."""
         print("Press 'q' to exit.")
-        while True:
+        while self.cap.isOpened():
             ret, frame = self.cap.read()
             if not ret:
                 break
@@ -49,11 +72,8 @@ class FaceHandTracker:
             # Mirror the frame naturally
             frame = cv2.flip(frame, 1)
 
-            # Convert to grayscale for detection
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
             # Process frame
-            frame = self.detect_and_draw(frame, gray)
+            frame = self.detect_and_draw(frame)
 
             # Calculate and display FPS
             self.curr_time = time.time()
@@ -62,9 +82,9 @@ class FaceHandTracker:
             cv2.putText(frame, f'FPS: {int(fps)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
             # Display result
-            cv2.imshow('OpenCV Face & Hand Detection', frame)
+            cv2.imshow('MediaPipe Face & Hand Tracking', frame)
 
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+            if cv2.waitKey(10) & 0xFF == ord('q'):
                 break
 
         self.cap.release()

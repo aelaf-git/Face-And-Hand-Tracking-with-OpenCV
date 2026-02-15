@@ -1,18 +1,22 @@
-# Face & Hand Tracking (OpenCV Haar Cascades)
+# Face & Hand Tracking (MediaPipe)
 
-A real-time face and hand detection application using **OpenCV** and **Haar Cascades**.
+A real-time "smart" face and hand tracking application using **MediaPipe** and **OpenCV**.
 
 ## Description
 
-This project uses pre-trained Haar Cascade classifiers to detect faces and hands from a webcam feed.
+This project utilizes [MediaPipe Holistic](https://google.github.io/mediapipe/solutions/holistic.html) to detect and track:
 
-- **Face Detection**: Uses the standard `haarcascade_frontalface_default.xml`.
-- **Hand Detection**: Uses a custom `haarcascade_hand.xml`.
+- **Face Mesh**: 468 landmarks on the face.
+- **Hands**: 21 landmarks per hand (fingers and joints).
+
+Unlike simple bounding boxes, this model understands the **geometry and pose** of your face and hands.
 
 ## Features
 
-- **Real-time Detection**: fast detection using lightweight Haar cascades.
-- **Visual Feedback**: Draws bounding boxes around detected faces (Blue) and hands (Green).
+- **Holistic Tracking**: Simultaneously tracks face, pose, and hands.
+- **Real-time Performance**: Optimized with FPS counter.
+- **Mirror Mode**: Video feed is mirrored for natural interaction.
+- **Skeletal Visualization**: Draws connections between joints.
 
 ## Prerequisites
 
@@ -22,7 +26,7 @@ This project uses pre-trained Haar Cascade classifiers to detect faces and hands
 ## Installation
 
 1. Clone the repository or download the source code.
-2. Create and activate a virtual environment (Optional but recommended):
+2. Create and activate a virtual environment (Recommended):
 
    ```bash
    python3 -m venv venv
@@ -35,19 +39,19 @@ This project uses pre-trained Haar Cascade classifiers to detect faces and hands
    pip install -r requirements.txt
    ```
 
-4. **Important**: Ensure the XML files are in the same directory:
-   - `haarcascade_frontalface_default.xml`
-   - `haarcascade_hand.xml`
-
 ## Usage
 
-1. Run the tracker script:
+1. Ensure your virtual environment is activated:
+
+   ```bash
+   source venv/bin/activate
+   ```
+
+2. Run the tracker script:
 
    ```bash
    python tracker.py
    ```
-
-2. The application will open a window showing the webcam feed.
 
 3. **Controls**:
    - Press **`q`** to exit the application.
@@ -55,3 +59,4 @@ This project uses pre-trained Haar Cascade classifiers to detect faces and hands
 ## Dependencies
 
 - `opencv-python`
+- `mediapipe`
